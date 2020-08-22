@@ -1,0 +1,631 @@
+---
+title: "Analysis"
+author: "Future of Work"
+date: "5/6/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+```
+
+## R Markdown
+
+This file is geared towards automating **The Future of Work** Analytical processes. The Analytics is usually divided into four aspects.
+
+* General Overview
+* Handles Analysis (For New tweets)
+* Keywords Analysis (For Insights)
+* Feature Contestants (For shows and the rest)
+
+We will Start by ensuring the files are read in from the **DATA** Folder in the working directory
+```{r}
+#Load all files and rbind
+
+
+
+df <- bbnaija_20082020_1   
+
+
+length(unique(df$author))
+
+sum(is.na(df$UserCreatedDate))
+
+```
+Once the Data has been read in from all the **DATA** Directory, we can then proceed to start preliminary Analysis of **General Overview**.
+
+```{r echo = FALSE}
+#Load in required libraries
+library(tidyverse)
+library(tidytext)
+library(reshape2)
+library(stringi)
+library(stringi)
+library(rmarkdown)
+library(knitr)
+library(eeptools)
+library(lubridate)
+```
+
+```{r echo=FALSE}
+#Get the distinct tweets
+df <- df %>% 
+  distinct(tweet, .keep_all = T) #This is to remove all duplicate tweets
+```
+
+
+## General Overview
+
+```{r}
+#Regular expression (Regex) function for extracting handles mentioned
+users <- function(x, ...){
+  xx <- strsplit(x, " ")
+  lapply(xx, function(xx)xx[grepl("@[[:alnum:]]", xx)])
+}
+#Most mention words
+removeURL2 <- function(x) gsub("([[:alpha:]])(?=\\1)", "", x, perl = TRUE)
+removeNumPunct <- function(x) gsub("[^[:alpha:][:space:]]*", "", x)
+
+#Extract the most mentioned handles
+users(df$tweet) %>% 
+  unlist() %>%
+  tolower() %>% 
+  as_tibble() %>% 
+  count(value, sort = T) %>% 
+  top_n(30) %>% 
+  write.csv("Analysis Files//top20_handles.csv")
+
+users(df$tweet) %>% 
+  unlist() %>%
+  tolower() %>% 
+  as_tibble() %>% 
+  count() %>% 
+  write.csv("Analysis Files//No of tweet handles.csv")
+
+
+df  %>% 
+  separate(date, into = c("date", "time"), sep = " ") %>% 
+  group_by(date) %>% 
+  count()  %>% 
+  write.csv("Analysis Files//No of Tweets.csv")
+
+df %>%
+  mutate(retweet = str_detect(tweet, "b'RT")) %>%
+  separate(date, into = c("date", "time"), sep = " ") %>% 
+  group_by(date) %>% 
+  count(retweet) %>%
+  filter(retweet == T) %>% 
+  write.csv("Analysis Files//No of retweets.csv")
+
+df %>% 
+  separate(date, into = c("date", "time"), sep = " ") %>% 
+  group_by(date) %>% 
+  summarise(n = n_distinct(author)) %>% 
+  write.csv('Analysis Files//No of Accounts.csv')
+```
+
+We need to get the most mentioned words in the tweets
+```{r}
+#Most mention words
+df %>% 
+  separate(date, into = c("date", "time"), sep = " ") %>% 
+  group_by(date) %>% 
+  mutate(text = tolower(tweet)) %>% 
+  #mutate(text = removeURL2(text)) %>% 
+  mutate(text = removeNumPunct(text)) %>% 
+  mutate(text = gsub("brt", "", text)) %>% 
+  # mutate(text = gsub("nultimateloveng", "ultimateloveng", text)) %>% 
+  # mutate(text = gsub("bultimateloveng", "ultimateloveng", text)) %>%
+  unnest_tokens(word, text) %>% 
+  anti_join(stop_words) %>% 
+  count(word, sort = T) %>% 
+  top_n(30) %>% 
+  write.csv("Analysis Files//top20_words.csv")
+
+```
+
+The NRC sentiments which show different reactions will be extracted for the whole tweets
+```{r}
+#install.packages("textdata")
+#Reactions on comments
+df %>% 
+  mutate(text = tolower(tweet)) %>% 
+  mutate(text = removeURL2(text)) %>% 
+separate(date, into = c("date", "time"), sep = " ") %>% 
+  #group_by(date) %>% 
+  mutate(text = gsub("brt", "", text)) %>% 
+  unnest_tokens(word, text) %>% 
+  anti_join(stop_words) %>% 
+  inner_join(get_sentiments("nrc")) %>% 
+  count(word, sentiment, date, sort = T) %>% 
+  distinct(word, .keep_all = T) %>% 
+  ungroup() %>% 
+  group_by(sentiment, date) %>% 
+  summarise(n = sum(n)) %>% 
+  write.csv("Analysis Files//reactions_on_alltweets.csv")
+
+```
+
+Getting the daily tweets trend by time; 
+```{r}
+#Find general daily trend
+  df %>% 
+    separate(date, into = c("date", "time"), sep = " ") %>% 
+    mutate(date = ymd(date)) %>% 
+    mutate(hr = hour(hms(time))) %>% 
+    mutate(tm = ifelse(hr < 12, "am", "pm")) %>%
+    group_by(date) %>%
+    count() %>% 
+    write.csv("Analysis Files//daily_trend.csv")
+```
+
+Getting the hourly trend to see which time of the day people tweeted the most;
+```{r}
+#Find hrly trend
+#am pm 
+df %>% 
+    separate(date, into = c("date", "time"), sep = " ") %>% 
+    mutate(date = ymd(date)) %>% 
+    mutate(hr = hour(hms(time))) %>% 
+    mutate(tm = ifelse(hr < 12, "am", "pm")) %>%
+    unite(time, hr, tm, sep = " ") %>% 
+  group_by(time, date) %>% 
+  count() %>% 
+    write.csv("Analysis Files//hr_trend.csv")
+  
+```
+
+Getting the day of the week people tweeted the most;
+```{r}
+#Week day trend
+df %>% 
+separate(date, into = c("date", "time"), sep = " ") %>% 
+  mutate(date = ymd(date)) %>% 
+  mutate(day = weekdays(date)) %>% 
+  group_by( day) %>% 
+  count() %>%
+  write.csv("Analysis Files//day_tweets.csv")
+```
+Getting the overall bing trend for all tweets;
+```{r}
+#Overall bing trend 
+df %>%
+  mutate(tweet = removeURL2(tweet)) %>% 
+  mutate(tweet = removeNumPunct(tweet)) %>% 
+  mutate(tweet = tolower(tweet)) %>% 
+  mutate(tweet = gsub("wil", "", tweet)) %>% 
+  mutate(tweet = gsub("ben", "", tweet)) %>% 
+  mutate(tweet = gsub("al", "", tweet)) %>% 
+  mutate(tweet = gsub("ned", "", tweet)) %>% 
+  unnest_tokens(word, tweet) %>% 
+  anti_join(stop_words) %>% 
+  inner_join(get_sentiments("bing")) %>% 
+  separate(date, into = c("date", "time"), sep = " ") %>% 
+  group_by(sentiment, date) %>% 
+  count() %>%
+  write.csv("Analysis Files//bing_trend.csv")
+
+```
+
+
+## Handles Analytics
+Once the **General Overview** has been dealt with, we can then proceed to the Handles Analytics. Firstly, we will get the account ages from the **UserCreatedDate** column. 
+
+```{r}
+df2 <-  df %>% 
+  mutate(rownuber = row_number()) %>% 
+  separate(UserCreatedDate, into = c("Create_date","Create_time"), sep = " ") %>% 
+  mutate(Create_date = as.Date(Create_date)) %>%
+  mutate(Account_age = floor(age_calc(Create_date, enddate = Sys.Date(), units = "years")))
+
+
+length(unique(df2$author))
+
+
+sum(is.na(df2$Account_age))
+```
+
+<!-- There are cases where we may have incorrect dates, we will correct it. And also if we have NA's we will replace them with a date.  -->
+<!-- ```{r} -->
+<!-- df2 <- df2 %>% -->
+<!--   mutate(Account_age = ifelse(Account_age == 50, mean(df2$Account_age), Account_age)) -->
+<!-- ``` -->
+
+Create a range column. This is aimed at grouping accounts into various sections:
+* group A 0-2
+* Group B 3-5
+* Group C 6-8
+* Group D 9-12
+```{r}
+#Create a range function
+df2 <- df2 %>%
+  mutate(ranges = ifelse(Account_age >= 0 & Account_age <3, "Group A", 
+                         ifelse(Account_age >= 3 & Account_age <6, "Group B",
+                                ifelse(Account_age >= 6 & Account_age < 9, "Group C", "Group D"))))
+
+
+df2 %>% 
+  separate(date, into = c("date", "time"), sep = " ") %>% 
+  distinct(author, .keep_all = T) %>% 
+  group_by(ranges, date) %>% 
+  count(Account_age, ranges) %>% 
+  mutate(percent = n/sum(n)) %>% 
+  write.csv("Analysis Files//Account_ages.csv")
+
+
+
+```
+
+Find the reactions on tweets by each age distribution of tweets
+```{r}
+#Get the unique age distributions 
+age <- unique(df2$Account_age)
+
+#Age filter
+plyr::rbind.fill(lapply(age, function(x){
+  df2 %>%   
+  separate(date, into = c("date", "time"), sep = " ") %>%
+  filter(Account_age == x) %>% 
+    mutate(text = tolower(tweet)) %>% 
+    unnest_tokens(word, text) %>% 
+    anti_join(stop_words) %>% 
+    inner_join(get_sentiments("nrc")) %>% #get nrc sentiments for entire dataset
+    group_by(sentiment, ranges) %>% #group
+    count(word, sentiment,date, sort = T) %>% 
+    ungroup() %>% 
+    distinct(word, .keep_all = T) %>% 
+    group_by(sentiment, ranges, date) %>% 
+    summarise(n = sum(n)) %>% 
+    mutate(Account_age = x)
+})) %>% 
+  write.csv("Analysis Files//Reactions.csv")
+```
+
+Getting the top words for each account type:
+```{r}
+#Top words for each account type
+plyr::rbind.fill(lapply(age, function(x){
+  df2 %>%
+    separate(date, into = c("date", "time"), sep = " ") %>%
+    filter(Account_age == x) %>% 
+    mutate(text = tolower(tweet)) %>% 
+  #mutate(text = removeURL2(text)) %>% 
+  mutate(text = removeNumPunct(text)) %>% 
+  mutate(text = gsub("brt", "", text)) %>% 
+  mutate(text = gsub("nultimateloveng", "ultimateloveng", text)) %>% 
+  mutate(text = gsub("bultimateloveng", "ultimateloveng", text)) %>%
+  mutate(tex = gsub("xfxfxx", "", text)) %>% 
+  unnest_tokens(word, text) %>% 
+  anti_join(stop_words) %>% 
+  count(word, ranges, date, sort = T) %>% 
+  top_n(30) %>% 
+    mutate(Account_age = x)
+  })) %>% 
+  write.csv("Analysis Files//Age_top20_words.csv")
+```
+
+
+Find the number of handles mentioned and the top handles in each age group:
+```{r}
+#Find the number of handles in each category
+plyr::rbind.fill(lapply(age, function(x){
+    df2 %>% 
+    separate(date, into = c("date", "time"), sep = " ") %>%
+    group_by(date) %>% 
+      filter(Account_age == x) %>% 
+      group_by(ranges) %>% 
+      summarise(handles = users(tweet) %>% 
+                  unlist() %>% 
+                  unique() %>% 
+                  length()) %>%
+      mutate(Account_age = x)
+  })) %>% 
+    write.csv("Analysis Files//Age_Handles.csv")
+
+
+#Find the top handles in each category
+plyr::rbind.fill(lapply(age, function(x){
+#users(filter(df2, Account_age == x)[,"tweet"]) %>% 
+dftt <- df2 %>% 
+    filter(Account_age == x)
+users(dftt$tweet) %>% 
+  unlist() %>% 
+  tolower() %>% 
+  as_tibble() %>% 
+  count(value, sort = T) %>% 
+  top_n(30) %>% 
+    mutate(Account_age = x)
+  })) %>% 
+  mutate(ranges = ifelse(Account_age >= 0 & Account_age <3, "Group A", 
+                  ifelse(Account_age >= 3 & Account_age <6, "Group B",
+                  ifelse(Account_age >= 6 & Account_age < 9, "Group C", "Group D"))))%>%
+  write.csv("Analysis Files//Age_top_handles.csv")
+
+```
+
+
+
+
+We will get the number of tweets used in each category:
+```{r}
+df2 %>%
+  separate(date, into = c("date", "time"), sep = ' ') %>% 
+  group_by(Account_age, date) %>% 
+  count() %>% 
+  write.csv("Analysis Files//Age_No_of_tweets.csv")
+
+getwd()
+```
+
+
+We will move to the keywords section, but lets give a trial for another different tweet.
+
+<!-- ## Keywords For More Insights -->
+
+<!-- To use the keywords section, we must first create a file in the working directory that will contain all keywords to be analyzed and then load it in as a vector into R.  -->
+
+<!-- ```{r} -->
+<!-- keywords <- scan("keyword.txt", character(), sep = ",") -->
+
+<!-- class(keywords) -->
+<!-- ``` -->
+
+<!-- Now that the keywords have been read in, we can then move to doing the required analysis for keywords as predefined: -->
+<!-- ## This is where we fix -->
+
+<!-- ```{r} -->
+<!-- #Trend by hour -->
+<!-- plyr::rbind.fill(lapply(keywords, function(x){ -->
+<!--   df %>% -->
+<!--     separate(date, into = c("date", "time"), sep = " ") %>%  -->
+<!--     mutate(date = ymd(date)) %>%  -->
+<!--     mutate(time = hms(time)) %>%  -->
+<!--     mutate(hr = hour(time)) %>% -->
+<!--     mutate(na = str_count(tweet, x)) %>%  -->
+<!--     mutate(tm = ifelse(hr < 12, "am", "pm")) %>% -->
+<!--     unite(time, hr, tm, sep = " ") %>%  -->
+<!--     mutate(word = x) %>%  -->
+<!--     group_by(time, word) %>%  -->
+<!--     summarise(n = sum(na)) -->
+<!-- })) %>%   -->
+<!--   write.csv("Analysis Files\\keyword_count_hr.csv") -->
+<!-- ``` -->
+
+
+<!-- Get the keyword trend by date: -->
+<!-- ```{r} -->
+<!-- #By day -->
+<!-- plyr::rbind.fill(lapply(keywords, function(x){ -->
+<!--   df %>% -->
+<!--     separate(date, into = c("date", "time"), sep = " ") %>%  -->
+<!--     mutate(date = ymd(date)) %>%  -->
+<!--     mutate(time = hms(time)) %>%  -->
+<!--     mutate(day = weekdays(date)) %>% -->
+<!--     mutate(na = str_count(tweet, x)) %>%  -->
+<!--     mutate(word = x) %>%  -->
+<!--     group_by(day, word) %>%  -->
+<!--     summarise(n = sum(na)) -->
+<!-- })) %>%  -->
+<!--   write.csv("Analysis Files\\keyword_count_day.csv") -->
+
+<!-- #By month -->
+<!-- plyr::rbind.fill(lapply(keywords, function(x){ -->
+<!--   df %>% -->
+<!--     separate(date, into = c("date", "time"), sep = " ") %>%  -->
+<!--     mutate(date = ymd(date)) %>%  -->
+<!--     mutate(time = hms(time)) %>%  -->
+<!--     mutate(mnth = months(date)) %>% -->
+<!--     mutate(na = str_count(tweet, x)) %>%  -->
+<!--     mutate(word = x) %>%  -->
+<!--     group_by(mnth, word) %>%  -->
+<!--     summarise(n = sum(na)) -->
+<!-- })) %>%  -->
+<!--   write.csv("Analysis Files\\keyword_count_mnth.csv") -->
+
+
+<!-- #Compile all the date and time together -->
+<!-- plyr::rbind.fill(lapply(keywords, function(x){ -->
+<!--   df %>%  -->
+<!--   mutate(txt = str_count(tweet, x)) %>%  -->
+<!--   mutate(date = ymd_hms(date)) %>%  -->
+<!--   group_by(date) %>%  -->
+<!--   summarise(txt = sum(txt)) %>%  -->
+<!--   mutate(word = x) -->
+<!--   })) %>%  -->
+<!--    write.csv("Analysis Files\\keyword.csv") -->
+
+
+<!-- #For the date only -->
+<!-- plyr::rbind.fill(lapply(keywords, function(x){ -->
+<!--   df %>%  -->
+<!--     mutate(txt = str_count(tweet, x)) %>%  -->
+<!--     mutate(date = ymd_hms(date)) %>% -->
+<!--     separate(date, into = c("date", "time"), sep = " ") %>%  -->
+<!--     mutate(date = ymd(date)) %>%  -->
+<!--     group_by(date) %>%  -->
+<!--     summarise(n = sum(txt)) %>%  -->
+<!--     mutate(keyword = x)})) %>%  -->
+<!--   write.csv("Analysis Files\\keyword_date.csv") -->
+<!-- ``` -->
+
+
+## Featured Contestants Analysis
+
+There must be a text file containing all the contestants name. That way, we can loop for each analysis. We will call the text file All_contestants
+```{r}
+all_contestants <- scan("All_contestants.txt", character(), sep = ",")
+x <- list(all_contestants)
+#x <- list(c("", "alteryx", "confirme", "", "", "", "ans", "", ""))
+all_contestants <- lapply(x, function(z){ z[!is.na(z) & z != ""]})
+all_contestants <- tolower(as.vector(all_contestants[[1]]))
+all_contestants <- c(all_contestants, "dora")
+all_contestants
+```
+
+
+Daily Mentions
+```{r}
+plyr::rbind.fill(lapply(all_contestants, function(x){
+  df[grepl(x, tolower(df$tweet)),] %>% 
+    separate(date, into = c("date", "time"), sep = " ") %>%
+    mutate(date = ymd(date)) %>% 
+    mutate(day = weekdays(date)) %>%
+    mutate(hr = hour(hms(time))) %>% 
+    mutate(tm = ifelse(hr < 12, "am", "pm")) %>%
+    unite(time, hr, tm, sep = " ") %>% 
+    group_by(day, time, date) %>% 
+    count(tweet) %>% 
+    summarise(n = sum(n))  %>% 
+    ungroup() %>% 
+    mutate(contestant = x) 
+})) %>% 
+  write.csv("Analysis Files//Contestant_daily_mentions.csv", row.names = F)
+
+
+
+#Total Mentions of Contestants
+plyr::rbind.fill(lapply(all_contestants, function(x){
+  df[grepl(x, tolower(df$tweet)),] %>% 
+    separate(date, into = c('date', 'time'), sep = ' ') %>% 
+    group_by(date) %>% 
+    count() %>% 
+    ungroup() %>% 
+    group_by(date) %>% 
+    summarise(n = sum(n)) %>% 
+    mutate(contestant = x)
+})) %>%
+  write.csv("Analysis Files//total_mentions_contestant.csv")
+
+```
+
+Most Controversial Contestant:
+```{r}
+plyr::rbind.fill(lapply(all_contestants, function(x){
+  df[grepl(x, tolower(df$tweet)),] %>%
+    separate(date, into = c("date", "time"), sep = " ") %>% 
+    #group_by(date) %>% 
+    mutate(text = tolower(tweet)) %>% 
+    unnest_tokens(word, text) %>% 
+    anti_join(stop_words) %>% 
+    inner_join(get_sentiments("nrc")) %>% #get nrc sentiments for entire dataset
+    group_by(sentiment, date) %>% #group
+    count(word, sentiment, sort = T) %>% 
+    ungroup() %>% 
+    distinct(word, .keep_all = T) %>% 
+    group_by(sentiment, date) %>% 
+    summarise(n = sum(n)) %>% 
+    mutate(name = x)
+})) #%>% 
+  write.csv("Analysis Files//Controversial_Contst.csv")
+
+
+```
+Top Words for All contestants:
+```{r}
+#Top 20 words for word cloud
+plyr::rbind.fill(lapply(all_contestants, function(x){
+    df[grepl(x, tolower(df$tweet)),] %>% 
+    mutate(tweet = removeURL2(tweet)) %>% 
+    mutate(tweet = removeNumPunct(tweet)) %>% 
+    mutate(tweet = tolower(tweet)) %>% 
+    mutate(tweet = gsub("wil", "", tweet)) %>% 
+    mutate(tweet = gsub("ben", "", tweet)) %>% 
+    mutate(tweet = gsub("al", "", tweet)) %>% 
+    mutate(tweet = gsub("ned", "", tweet)) %>% 
+    unnest_tokens(word, tweet) %>% 
+    anti_join(stop_words) %>% 
+    count(word, sort = T) %>% 
+    distinct(word, .keep_all = T) %>% 
+    top_n(20) %>% 
+    mutate(contestant = x)
+})) %>% 
+write.csv("Analysis Files//Top_words_contst.csv")
+```
+
+Bing Analysis by Day of the week:
+```{r}
+#Sentiment trend day of the week
+plyr::rbind.fill(lapply(all_contestants, function(x){
+  df[grepl(x, tolower(df$tweet)),] %>% 
+    mutate(tweet = removeURL2(tweet)) %>% 
+    mutate(tweet = removeNumPunct(tweet)) %>% 
+    mutate(tweet = tolower(tweet)) %>% 
+    mutate(tweet = gsub("wil", "", tweet)) %>% 
+    mutate(tweet = gsub("ben", "", tweet)) %>% 
+    mutate(tweet = gsub("al", "", tweet)) %>% 
+    mutate(tweet = gsub("ned", "", tweet)) %>% 
+    unnest_tokens(word, tweet) %>% 
+    anti_join(stop_words) %>% 
+    inner_join(get_sentiments("bing")) %>% 
+    separate(date, into = c("date", "time"), sep = " ") %>% 
+    mutate(date = ymd(date)) %>% 
+    mutate(day = weekdays(date)) %>% 
+    group_by(sentiment, day, date) %>% 
+    count() %>% 
+    mutate(contestant = x)
+})) %>% 
+  write.csv("Analysis Files//Bing_Contest_by_Weekday.csv")
+
+```
+Bing Analysis by hr of the day:
+```{r}
+plyr::rbind.fill(lapply(all_contestants, function(x){
+  df[grepl(x, tolower(df$tweet)),] %>% 
+    mutate(tweet = removeURL2(tweet)) %>% 
+    mutate(tweet = removeNumPunct(tweet)) %>% 
+    mutate(tweet = tolower(tweet)) %>% 
+    mutate(tweet = gsub("wil", "", tweet)) %>% 
+    mutate(tweet = gsub("ben", "", tweet)) %>% 
+    mutate(tweet = gsub("al", "", tweet)) %>% 
+    mutate(tweet = gsub("ned", "", tweet)) %>% 
+    unnest_tokens(word, tweet) %>% 
+    anti_join(stop_words) %>% 
+    inner_join(get_sentiments("bing")) %>% 
+    separate(date, into = c("date", "time"), sep = " ") %>% 
+    mutate(date = ymd(date)) %>% 
+    mutate(day = weekdays(date)) %>% 
+    mutate(hr = hour(hms(time))) %>% 
+    mutate(tm = ifelse(hr < 12, "am", "pm")) %>%
+    unite(time, hr, tm, sep = " ") %>% 
+    group_by(time, day, date) %>% 
+    count(sentiment) %>% 
+    mutate(contestant = x)
+})) %>% 
+  write.csv("Analysis Files//Bing_Contest_by_hr.csc")
+```
+
+```{r}
+
+```
+
+Handles for each contestant
+```{r}
+#Handles for contestants
+plyr::rbind.fill(lapply(all_contestants, function(x){
+  df[grepl(x, tolower(df$tweet)),] %>%
+    summarise(handles = users(tweet) %>% 
+                unlist() %>% 
+                unique() %>% 
+                length()) %>%
+    mutate(contestant = x)})) %>% 
+  write.csv("Analysis Files//Contst_handles_count.csv")
+
+
+#number of verified and unverified accts 
+plyr::rbind.fill(lapply(all_contestants, function(x){
+  df[grepl(x, tolower(df$tweet)),] %>%
+  distinct(author, .keep_all = T) %>% 
+    separate(date, into = c("date", "time"), sep = " ") %>% 
+    group_by(date) %>% 
+  count(UserIsVerified) %>% 
+    mutate(name = x)})) %>% 
+  write.csv("Analysis Files//Handles_verified_contst.csv")
+
+```
+
+```{r}
+
+getwd()
+```
+
