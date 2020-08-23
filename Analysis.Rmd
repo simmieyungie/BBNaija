@@ -1,5 +1,5 @@
 ---
-title: "Analysis"
+title: "Football Analysis"
 author: "Future of Work"
 date: "5/6/2020"
 output: html_document
@@ -25,7 +25,7 @@ We will Start by ensuring the files are read in from the **DATA** Folder in the 
 
 
 
-df <- bbnaija_20082020_1   
+df <- read.csv("C:\\Users\\SIMIYOUNG\\Downloads\\uelfinals.csv")
 
 
 length(unique(df$author))
@@ -361,93 +361,97 @@ getwd()
 
 We will move to the keywords section, but lets give a trial for another different tweet.
 
-<!-- ## Keywords For More Insights -->
+## Keywords For More Insights
 
-<!-- To use the keywords section, we must first create a file in the working directory that will contain all keywords to be analyzed and then load it in as a vector into R.  -->
+To use the keywords section, we must first create a file in the working directory that will contain all keywords to be analyzed and then load it in as a vector into R.
 
-<!-- ```{r} -->
-<!-- keywords <- scan("keyword.txt", character(), sep = ",") -->
+```{r}
+keywords <- scan("keyword.txt", character(), sep = ",")
+```
 
-<!-- class(keywords) -->
-<!-- ``` -->
+```{r}
 
-<!-- Now that the keywords have been read in, we can then move to doing the required analysis for keywords as predefined: -->
-<!-- ## This is where we fix -->
-
-<!-- ```{r} -->
-<!-- #Trend by hour -->
-<!-- plyr::rbind.fill(lapply(keywords, function(x){ -->
-<!--   df %>% -->
-<!--     separate(date, into = c("date", "time"), sep = " ") %>%  -->
-<!--     mutate(date = ymd(date)) %>%  -->
-<!--     mutate(time = hms(time)) %>%  -->
-<!--     mutate(hr = hour(time)) %>% -->
-<!--     mutate(na = str_count(tweet, x)) %>%  -->
-<!--     mutate(tm = ifelse(hr < 12, "am", "pm")) %>% -->
-<!--     unite(time, hr, tm, sep = " ") %>%  -->
-<!--     mutate(word = x) %>%  -->
-<!--     group_by(time, word) %>%  -->
-<!--     summarise(n = sum(na)) -->
-<!-- })) %>%   -->
-<!--   write.csv("Analysis Files\\keyword_count_hr.csv") -->
-<!-- ``` -->
+```
 
 
-<!-- Get the keyword trend by date: -->
-<!-- ```{r} -->
-<!-- #By day -->
-<!-- plyr::rbind.fill(lapply(keywords, function(x){ -->
-<!--   df %>% -->
-<!--     separate(date, into = c("date", "time"), sep = " ") %>%  -->
-<!--     mutate(date = ymd(date)) %>%  -->
-<!--     mutate(time = hms(time)) %>%  -->
-<!--     mutate(day = weekdays(date)) %>% -->
-<!--     mutate(na = str_count(tweet, x)) %>%  -->
-<!--     mutate(word = x) %>%  -->
-<!--     group_by(day, word) %>%  -->
-<!--     summarise(n = sum(na)) -->
-<!-- })) %>%  -->
-<!--   write.csv("Analysis Files\\keyword_count_day.csv") -->
+Now that the keywords have been read in, we can then move to doing the required analysis for keywords as predefined:
+## This is where we fix
 
-<!-- #By month -->
-<!-- plyr::rbind.fill(lapply(keywords, function(x){ -->
-<!--   df %>% -->
-<!--     separate(date, into = c("date", "time"), sep = " ") %>%  -->
-<!--     mutate(date = ymd(date)) %>%  -->
-<!--     mutate(time = hms(time)) %>%  -->
-<!--     mutate(mnth = months(date)) %>% -->
-<!--     mutate(na = str_count(tweet, x)) %>%  -->
-<!--     mutate(word = x) %>%  -->
-<!--     group_by(mnth, word) %>%  -->
-<!--     summarise(n = sum(na)) -->
-<!-- })) %>%  -->
-<!--   write.csv("Analysis Files\\keyword_count_mnth.csv") -->
+```{r}
+#Trend by hour
+plyr::rbind.fill(lapply(keywords, function(x){
+  df %>%
+    separate(date, into = c("date", "time"), sep = " ") %>%
+    mutate(date = ymd(date)) %>%
+    mutate(time = hms(time)) %>%
+    mutate(hr = hour(time)) %>%
+    mutate(na = str_count(tweet, x)) %>%
+    mutate(tm = ifelse(hr < 12, "am", "pm")) %>%
+    unite(time, hr, tm, sep = " ") %>%
+    mutate(word = x) %>%
+    group_by(time, word) %>%
+    summarise(n = sum(na))
+})) %>%
+  write.csv("Analysis Files\\keyword_count_hr.csv")
+```
 
 
-<!-- #Compile all the date and time together -->
-<!-- plyr::rbind.fill(lapply(keywords, function(x){ -->
-<!--   df %>%  -->
-<!--   mutate(txt = str_count(tweet, x)) %>%  -->
-<!--   mutate(date = ymd_hms(date)) %>%  -->
-<!--   group_by(date) %>%  -->
-<!--   summarise(txt = sum(txt)) %>%  -->
-<!--   mutate(word = x) -->
-<!--   })) %>%  -->
-<!--    write.csv("Analysis Files\\keyword.csv") -->
+Get the keyword trend by date:
+```{r}
+#By day
+plyr::rbind.fill(lapply(keywords, function(x){
+  df %>%
+    separate(date, into = c("date", "time"), sep = " ") %>%
+    mutate(date = ymd(date)) %>%
+    mutate(time = hms(time)) %>%
+    mutate(day = weekdays(date)) %>%
+    mutate(na = str_count(tweet, x)) %>%
+    mutate(word = x) %>%
+    group_by(day, word) %>%
+    summarise(n = sum(na))
+})) %>%
+  write.csv("Analysis Files\\keyword_count_day.csv")
+
+#By month
+plyr::rbind.fill(lapply(keywords, function(x){
+  df %>%
+    separate(date, into = c("date", "time"), sep = " ") %>%
+    mutate(date = ymd(date)) %>%
+    mutate(time = hms(time)) %>%
+    mutate(mnth = months(date)) %>%
+    mutate(na = str_count(tweet, x)) %>%
+    mutate(word = x) %>%
+    group_by(mnth, word) %>%
+    summarise(n = sum(na))
+})) %>%
+  write.csv("Analysis Files\\keyword_count_mnth.csv")
 
 
-<!-- #For the date only -->
-<!-- plyr::rbind.fill(lapply(keywords, function(x){ -->
-<!--   df %>%  -->
-<!--     mutate(txt = str_count(tweet, x)) %>%  -->
-<!--     mutate(date = ymd_hms(date)) %>% -->
-<!--     separate(date, into = c("date", "time"), sep = " ") %>%  -->
-<!--     mutate(date = ymd(date)) %>%  -->
-<!--     group_by(date) %>%  -->
-<!--     summarise(n = sum(txt)) %>%  -->
-<!--     mutate(keyword = x)})) %>%  -->
-<!--   write.csv("Analysis Files\\keyword_date.csv") -->
-<!-- ``` -->
+#Compile all the date and time together
+plyr::rbind.fill(lapply(keywords, function(x){
+  df %>%
+  mutate(txt = str_count(tweet, x)) %>%
+  mutate(date = ymd_hms(date)) %>%
+  group_by(date) %>%
+  summarise(Count = sum(txt)) %>%
+  mutate(word = x) %>% 
+  filter(Count > 0)
+  })) %>%
+   write.csv("Analysis Files\\keyword.csv")
+
+
+#For the date only
+plyr::rbind.fill(lapply(keywords, function(x){
+  df %>%
+    mutate(txt = str_count(tweet, x)) %>%
+    mutate(date = ymd_hms(date)) %>%
+    separate(date, into = c("date", "time"), sep = " ") %>%
+    mutate(date = ymd(date)) %>%
+    group_by(date) %>%
+    summarise(n = sum(txt)) %>%
+    mutate(keyword = x)})) %>%
+  write.csv("Analysis Files\\keyword_date.csv")
+```
 
 
 ## Featured Contestants Analysis
@@ -459,8 +463,11 @@ x <- list(all_contestants)
 #x <- list(c("", "alteryx", "confirme", "", "", "", "ans", "", ""))
 all_contestants <- lapply(x, function(z){ z[!is.na(z) & z != ""]})
 all_contestants <- tolower(as.vector(all_contestants[[1]]))
-all_contestants <- c(all_contestants, "dora")
-all_contestants
+# all_contestants <- c(all_contestants, "dora")
+
+
+all_contestants <-  c(all_contestants[1:15], as.vector(strsplit(all_contestants[16], ",")[[1]]))
+
 ```
 
 
@@ -480,7 +487,7 @@ plyr::rbind.fill(lapply(all_contestants, function(x){
     ungroup() %>% 
     mutate(contestant = x) 
 })) %>% 
-  write.csv("Analysis Files//Contestant_daily_mentions.csv", row.names = F)
+  write.csv("Analysis Files//Team_daily_mentions.csv", row.names = F)
 
 
 
@@ -495,7 +502,7 @@ plyr::rbind.fill(lapply(all_contestants, function(x){
     summarise(n = sum(n)) %>% 
     mutate(contestant = x)
 })) %>%
-  write.csv("Analysis Files//total_mentions_contestant.csv")
+  write.csv("Analysis Files//total_team_mentions.csv")
 
 ```
 
@@ -516,8 +523,8 @@ plyr::rbind.fill(lapply(all_contestants, function(x){
     group_by(sentiment, date) %>% 
     summarise(n = sum(n)) %>% 
     mutate(name = x)
-})) #%>% 
-  write.csv("Analysis Files//Controversial_Contst.csv")
+})) %>% 
+  write.csv("Analysis Files//Controversial_Team.csv")
 
 
 ```
@@ -540,7 +547,7 @@ plyr::rbind.fill(lapply(all_contestants, function(x){
     top_n(20) %>% 
     mutate(contestant = x)
 })) %>% 
-write.csv("Analysis Files//Top_words_contst.csv")
+write.csv("Analysis Files//Top_words_team.csv")
 ```
 
 Bing Analysis by Day of the week:
@@ -551,10 +558,6 @@ plyr::rbind.fill(lapply(all_contestants, function(x){
     mutate(tweet = removeURL2(tweet)) %>% 
     mutate(tweet = removeNumPunct(tweet)) %>% 
     mutate(tweet = tolower(tweet)) %>% 
-    mutate(tweet = gsub("wil", "", tweet)) %>% 
-    mutate(tweet = gsub("ben", "", tweet)) %>% 
-    mutate(tweet = gsub("al", "", tweet)) %>% 
-    mutate(tweet = gsub("ned", "", tweet)) %>% 
     unnest_tokens(word, tweet) %>% 
     anti_join(stop_words) %>% 
     inner_join(get_sentiments("bing")) %>% 
@@ -565,7 +568,7 @@ plyr::rbind.fill(lapply(all_contestants, function(x){
     count() %>% 
     mutate(contestant = x)
 })) %>% 
-  write.csv("Analysis Files//Bing_Contest_by_Weekday.csv")
+  write.csv("Analysis Files//Bing_team_by_Weekday.csv")
 
 ```
 Bing Analysis by hr of the day:
@@ -575,10 +578,6 @@ plyr::rbind.fill(lapply(all_contestants, function(x){
     mutate(tweet = removeURL2(tweet)) %>% 
     mutate(tweet = removeNumPunct(tweet)) %>% 
     mutate(tweet = tolower(tweet)) %>% 
-    mutate(tweet = gsub("wil", "", tweet)) %>% 
-    mutate(tweet = gsub("ben", "", tweet)) %>% 
-    mutate(tweet = gsub("al", "", tweet)) %>% 
-    mutate(tweet = gsub("ned", "", tweet)) %>% 
     unnest_tokens(word, tweet) %>% 
     anti_join(stop_words) %>% 
     inner_join(get_sentiments("bing")) %>% 
@@ -592,7 +591,7 @@ plyr::rbind.fill(lapply(all_contestants, function(x){
     count(sentiment) %>% 
     mutate(contestant = x)
 })) %>% 
-  write.csv("Analysis Files//Bing_Contest_by_hr.csc")
+  write.csv("Analysis Files//Bing_team_by_hr.csv")
 ```
 
 ```{r}
@@ -609,7 +608,7 @@ plyr::rbind.fill(lapply(all_contestants, function(x){
                 unique() %>% 
                 length()) %>%
     mutate(contestant = x)})) %>% 
-  write.csv("Analysis Files//Contst_handles_count.csv")
+  write.csv("Analysis Files//Team_handles_count.csv")
 
 
 #number of verified and unverified accts 
@@ -620,12 +619,10 @@ plyr::rbind.fill(lapply(all_contestants, function(x){
     group_by(date) %>% 
   count(UserIsVerified) %>% 
     mutate(name = x)})) %>% 
-  write.csv("Analysis Files//Handles_verified_contst.csv")
+  write.csv("Analysis Files//Handles_verified_team.csv")
 
 ```
 
-```{r}
 
-getwd()
-```
+
 
